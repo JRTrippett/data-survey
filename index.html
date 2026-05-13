@@ -1,178 +1,653 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Interactive Concept Survey</title>
-  <style>
-    :root { --primary: #4a6fa5; --text: #333; --light: #f0f0f0; }
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 2rem; }
-    .survey-container { max-width: 800px; margin: auto; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    #question-area { display: flex; flex-direction: column; gap: 1rem; }
-    .block-header { font-weight: bold; color: var(--primary); margin-bottom: 0.5rem; }
-    .nav-buttons { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1rem; }
-    #next-btn, #copy-btn { padding: 0.6rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    .single-choice { display: grid; gap: 0.5rem; }
-    .option-btn { flex: 1; min-width: 120px; padding: 0.6rem; background: var(--light); border: none; border-radius: 4px; transition: all 0.3s; }
-    .rank-container { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.5rem 0; }
-    .rank-item { min-width: 120px; background: var(--light); border-radius: 4px; padding: 0.6rem; text-align: center; }
-    textarea.text-input { width: 100%; min-height: 80px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
-    .results-screen { display: none; background: white; padding: 2rem; text-align: center; }
-    .result-block { margin-bottom: 1.5rem; padding: 1rem; border-left: 3px solid var(--primary); }
-    .result-q { font-weight: bold; color: var(--text); }
-    .result-a { min-height: 20px; word-break: break-all; }
-    #results-content { display: flex; flex-direction: column; gap: 1rem; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commonplace — Concept Survey</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f7f6f3;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-faint: #9b9b9b;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.25);
+    --accent: #1a1a1a;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616;
+      --bg-secondary: #1f1f1f;
+      --text: #f0f0f0;
+      --text-muted: #a0a0a0;
+      --text-faint: #666;
+      --border: rgba(255,255,255,0.1);
+      --border-strong: rgba(255,255,255,0.25);
+      --accent: #f0f0f0;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .card {
+    background: var(--bg);
+    border-radius: 14px;
+    border: 0.5px solid var(--border);
+    padding: 2rem 2rem 1.5rem;
+    width: 100%;
+    max-width: 620px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  }
+
+  .brand {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    color: var(--text-faint);
+    margin-bottom: 1.75rem;
+    text-transform: uppercase;
+  }
+
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.35s ease;
+  }
+
+  .block-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: .5rem;
+  }
+
+  .question {
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+
+  .opts { display: flex; flex-direction: column; gap: 9px; margin-bottom: 1.75rem; }
+
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 15px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    transition: border-color .15s, background .15s;
+    line-height: 1.4;
+  }
+
+  .opt:hover { border-color: var(--border-strong); background: var(--bg-secondary); }
+
+  .opt.sel {
+    border-color: var(--accent);
+    background: var(--bg-secondary);
+  }
+
+  .dot {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    flex-shrink: 0;
+    transition: background .15s, border-color .15s;
+  }
+
+  .opt.sel .dot {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .rank-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 1.75rem; }
+
+  .rank-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 13px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+
+  .rank-n {
+    font-size: 12px;
+    color: var(--text-faint);
+    min-width: 18px;
+    font-weight: 500;
+  }
+
+  .rank-label { flex: 1; font-size: 14px; color: var(--text); }
+
+  .rank-arrows { display: flex; flex-direction: column; gap: 3px; }
+
+  .arr {
+    width: 26px;
+    height: 20px;
+    border: 0.5px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .12s;
+  }
+
+  .arr:hover { background: var(--bg-secondary); }
+  .arr:disabled { opacity: .25; cursor: default; }
+
+  textarea.tinput {
+    width: 100%;
+    min-height: 88px;
+    padding: 12px 13px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--text);
+    resize: vertical;
+    margin-bottom: 1.75rem;
+    line-height: 1.6;
+  }
+
+  textarea.tinput:focus { outline: none; border-color: var(--border-strong); }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: .5rem;
+  }
+
+  .step-info { font-size: 13px; color: var(--text-faint); }
+
+  .btn {
+    padding: 9px 20px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+    transition: background .15s;
+    font-family: inherit;
+  }
+
+  .btn:hover { background: var(--bg-secondary); }
+  .btn:disabled { opacity: .3; cursor: default; }
+
+  .btn.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  .btn.primary:hover { opacity: .82; }
+
+  /* intro */
+  .intro-body { padding: .5rem 0 1.5rem; }
+  .intro-body p {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.75;
+    margin-bottom: 1rem;
+  }
+  .intro-body p:last-of-type { margin-bottom: 1.5rem; }
+
+  /* results */
+  .res-block {
+    padding: 1rem 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .res-block:last-child { border-bottom: none; }
+  .res-q { font-size: 12px; color: var(--text-faint); margin-bottom: 5px; }
+  .res-a { font-size: 15px; font-weight: 500; }
+  .res-rank { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+  .res-rank-row { display: flex; gap: 10px; font-size: 14px; }
+  .res-rank-n { color: var(--text-faint); font-size: 13px; min-width: 18px; }
+
+  .done-note {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .copy-row { display: flex; gap: 10px; margin-top: 1.5rem; }
+  .copy-row .btn { flex: 1; text-align: center; }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity .25s;
+    pointer-events: none;
+  }
+
+  .toast.show { opacity: 1; }
+
+  /* submitted state */
+  .submitted-msg {
+    text-align: center;
+    padding: 2rem 0 1rem;
+  }
+  .submitted-msg h2 { font-size: 20px; font-weight: 500; margin-bottom: .75rem; }
+  .submitted-msg p { font-size: 15px; color: var(--text-muted); line-height: 1.7; }
+
+  @media (max-width: 480px) {
+    .card { padding: 1.5rem 1.25rem 1.25rem; }
+    .question { font-size: 16px; }
+  }
+</style>
 </head>
 <body>
-  <div class="survey-container" id="survey-screen">
-    <h1>Concept Survey</h1>
-    <div id="question-area"></div>
-    <div class="nav-buttons">
-      <button id="copy-btn">Copy Answers</button>
-      <button id="next-btn">Next</button>
+
+<div class="card">
+  <div class="brand">Commonplace</div>
+
+  <!-- INTRO -->
+  <div id="intro">
+    <div class="question" style="font-size:22px">How do ideas connect for you?</div>
+    <div class="intro-body">
+      <p>There are no right answers here. This is about how you naturally move between ideas — the paths your mind takes when it wanders.</p>
+      <p>Four short blocks. Maybe five minutes. Your responses will help shape how a knowledge system built on the whole of human thought understands the connections between things.</p>
+      <button class="btn primary" onclick="startSurvey()">Begin</button>
     </div>
   </div>
 
-  <div class="survey-container" id="results-screen">
-    <h2>Survey Results</h2>
-    <div id="results-content"></div>
+  <!-- SURVEY -->
+  <div id="survey" style="display:none">
+    <div class="progress-track"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+    <div id="qarea"></div>
+    <div class="nav">
+      <button class="btn" id="back-btn" onclick="goBack()" disabled>Back</button>
+      <span class="step-info" id="step-info"></span>
+      <button class="btn primary" id="next-btn" onclick="goNext()" disabled>Next</button>
+    </div>
   </div>
 
-  <!-- JavaScript -->
-  <script>
-    // Survey data structure
-    const questions = [
-      { block: "Concept 1", q: "What is your primary concept?", type: 'text', placeholder: "Enter your answer..." },
-      { block: "Ranking", q: "Rank these items by importance (1=most):", type: 'rank', items: ["A", "B", "C", "D"] },
-      { block: "Options", q: "Select one option:", type: 'single', opts: ["Option 1", "Option 2", "Option 3"] }
-    ];
+  <!-- RESULTS -->
+  <div id="results" style="display:none">
+    <div class="question">Your responses</div>
+    <div class="done-note">Here's what you chose. Copy and send these to the survey organizer, or submit directly if enabled.</div>
+    <div id="res-content"></div>
+    <div class="copy-row">
+      <button class="btn" onclick="copyResults()">Copy responses</button>
+      <button class="btn primary" id="submit-btn" onclick="submitResults()">Submit</button>
+    </div>
+  </div>
 
-    let current = 0;
-    const answers = Array(questions.length).fill(null);
+  <!-- SUBMITTED -->
+  <div id="submitted" style="display:none">
+    <div class="submitted-msg">
+      <h2>Thank you</h2>
+      <p>Your responses have been recorded. You're helping build something worth building.</p>
+    </div>
+  </div>
+</div>
 
-    // Render the current question
-    function render() {
-      const q = questions[current];
-      let html = `<div class="block-header">${q.block}</div>`;
+<div class="toast" id="toast"></div>
 
-      if (q.type === 'text') {
-        const val = answers[current] || '';
-        html += `
-          <textarea class="text-input" id="text-input-${current}" placeholder="${q.placeholder}"
-                    oninput="handleText(${current})">${val}</textarea>
-        `;
-      } else if (q.type === 'rank') {
-        const rankItems = (answers[current] || q.items).map(item => `<div class="rank-item">${item}</div>`);
-        html += `
-          <div class="rank-container">
-            ${rankItems.join('')}
-          </div>
-        `;
-      } else if (q.type === 'single') {
-        const options = q.opts.map((opt, i) =>
-          `<button class="option-btn" onclick="selectOpt(${i})">${opt}</button>`
-        );
-        html += `
-          <div class="single-choice">
-            ${options.join('')}
-          </div>
-        `;
-      }
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+// Paste your Formspree endpoint here after creating a free form at formspree.io
+// e.g. "https://formspree.io/f/xabc1234"
+// Leave empty to use copy-only mode.
+const FORM_ENDPOINT = "";
+// ─────────────────────────────────────────────────────────────────────────────
 
-      document.getElementById('question-area').innerHTML = html;
-      updateNext();
-    }
+const questions = [
+  {
+    block: "Block 1 — Free association",
+    type: "single",
+    q: "A nautilus shell most connects to:",
+    opts: [
+      "Mathematical patterns",
+      "The ocean and living things",
+      "Ancient architecture",
+      "Musical structure",
+      "The passage of time"
+    ]
+  },
+  {
+    block: "Block 1 — Free association",
+    type: "single",
+    q: "The fall of Rome most connects to:",
+    opts: [
+      "Military overreach",
+      "Economic collapse",
+      "Natural cycles of rise and fall",
+      "Moral and cultural decay",
+      "Climate and environmental pressure"
+    ]
+  },
+  {
+    block: "Block 1 — Free association",
+    type: "single",
+    q: "Fire, as a symbol, most connects to:",
+    opts: [
+      "Destruction and war",
+      "Knowledge and discovery",
+      "Transformation and change",
+      "Divine or supernatural power",
+      "Human survival and community"
+    ]
+  },
+  {
+    block: "Block 2 — Forced ranking",
+    type: "rank",
+    q: "Rank these from most to least connected to each other as a group. Follow your instinct — don't overthink it.",
+    items: [
+      "A nautilus shell",
+      "A Gothic cathedral",
+      "A Bach fugue",
+      "A sunflower's seed spiral",
+      "A Roman aqueduct"
+    ]
+  },
+  {
+    block: "Block 3 — Bridge questions",
+    type: "text",
+    q: "In one sentence — what connects the collapse of an ancient civilization to a thunderstorm?",
+    placeholder: "Whatever comes to mind first..."
+  },
+  {
+    block: "Block 3 — Bridge questions",
+    type: "text",
+    q: "In one sentence — what do mathematics and mythology have in common at their core?",
+    placeholder: "No wrong answers here..."
+  },
+  {
+    block: "Block 4 — Relationship pairs",
+    type: "single",
+    q: "Science and religion — which relationship feels truest?",
+    opts: [
+      "They fundamentally contradict each other",
+      "They ask the same questions through different methods",
+      "Science replaced what religion once explained",
+      "Both are searching for certainty in an uncertain world"
+    ]
+  },
+  {
+    block: "Block 4 — Relationship pairs",
+    type: "single",
+    q: "War and architecture — which relationship feels truest?",
+    opts: [
+      "War destroys what architecture builds",
+      "Both are expressions of the same will to power",
+      "Great architecture often follows great conflict",
+      "They share the same geometry — dominance over space"
+    ]
+  },
+  {
+    block: "Block 4 — Relationship pairs",
+    type: "single",
+    q: "A single human life and the arc of a civilization — which feels truest?",
+    opts: [
+      "The same story, told at different scales",
+      "Incomparable — scale changes everything",
+      "Civilizations are just individuals multiplied",
+      "Both are defined more by their endings than their peaks"
+    ]
+  }
+];
 
-    // Handle text input
-    function handleText(index) {
-      const val = document.getElementById(`text-input-${index}`).value.trim();
-      answers[index] = val || null;
-      updateNext();
-    }
+let current = 0;
+const answers = new Array(questions.length).fill(null);
 
-    // Select single option
-    function selectOpt(i) {
-      answers[current] = i;
-      render();
-    }
+function startSurvey() {
+  document.getElementById("intro").style.display = "none";
+  document.getElementById("survey").style.display = "block";
+  render();
+}
 
-    // Move items in rank question
-    function moveRank(index, direction) {
-      const arr = [...answers[current]];
-      const newIndex = index + direction;
+function render() {
+  const q = questions[current];
+  const pct = Math.round((current / questions.length) * 100);
+  document.getElementById("prog").style.width = pct + "%";
+  document.getElementById("step-info").textContent = (current + 1) + " of " + questions.length;
+  document.getElementById("back-btn").disabled = current === 0;
 
-      if (newIndex >= 0 && newIndex < arr.length) {
-        [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
-        answers[current] = arr;
-        render();
-      }
-    }
+  let html = '<div class="block-label">' + q.block + '</div>';
+  html += '<div class="question">' + q.q + '</div>';
 
-    // Update Next button state
-    function updateNext() {
-      const q = questions[current];
-      let ready = false;
+  if (q.type === "single") {
+    html += '<div class="opts">';
+    q.opts.forEach((o, i) => {
+      const sel = answers[current] === i ? " sel" : "";
+      html += '<button class="opt' + sel + '" onclick="selectOpt(' + i + ')"><div class="dot"></div>' + o + '</button>';
+    });
+    html += '</div>';
 
-      if (q.type === 'rank') ready = true;
-      else if (q.type === 'text') ready = answers[current]?.length > 0;
-      else ready = answers[current] !== null;
+  } else if (q.type === "rank") {
+    if (!answers[current]) answers[current] = [...q.items];
+    html += '<div class="rank-list">';
+    answers[current].forEach((item, i) => {
+      const len = answers[current].length;
+      html += '<div class="rank-row">';
+      html += '<span class="rank-n">' + (i + 1) + '</span>';
+      html += '<span class="rank-label">' + item + '</span>';
+      html += '<div class="rank-arrows">';
+      html += '<button class="arr" onclick="moveRank(' + i + ',-1)"' + (i === 0 ? ' disabled' : '') + '>▲</button>';
+      html += '<button class="arr" onclick="moveRank(' + i + ',1)"' + (i === len - 1 ? ' disabled' : '') + '>▼</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
 
-      document.getElementById('next-btn').disabled = !ready;
-      document.getElementById('next-btn').textContent =
-        current === questions.length - 1 ? 'See Results' : 'Next';
-    }
+  } else if (q.type === "text") {
+    const val = answers[current] || "";
+    html += '<textarea class="tinput" id="ta" placeholder="' + q.placeholder + '" oninput="handleText()">' + val + '</textarea>';
+  }
 
-    // Navigation functions
-    function goNext() {
-      if (questions[current].type === 'text') {
-        const val = document.querySelector(`#text-input-${current}`)?.value.trim();
-        answers[current] = val || null;
-      }
-      current++;
-      render();
+  document.getElementById("qarea").innerHTML = html;
+  updateNext();
 
-      if (current >= questions.length) showResults();
-    }
+  if (q.type === "text") {
+    const ta = document.getElementById("ta");
+    if (ta) ta.focus();
+  }
+}
 
-    function goBack() {
-      if (current > 0) { current--; render(); }
-    }
+function selectOpt(i) {
+  answers[current] = i;
+  render();
+}
 
-    // Show results
-    function showResults() {
-      document.getElementById('survey-screen').style.display = 'none';
-      document.getElementById('results-screen').style.display = 'block';
+function moveRank(i, dir) {
+  const arr = answers[current];
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  render();
+}
 
-      let html = '';
-      questions.forEach((q, i) => {
-        html += `
-          <div class="result-block">
-            <div class="result-q">${q.block} — ${q.q}</div>
-            ${q.type === 'single' ?
-              `<div class="result-a">${answers[i] !== null ? q.opts[answers[i]] : '—'}</div>` :
-              (q.type === 'rank' ?
-                `<div class="result-rank">
-                  ${(answers[i] || q.items).map((item, j) =>
-                    `<div class="result-rank-item"><span>${j+1}.</span> ${item}</div>`
-                  ).join('')}
-                </div>` :
-                `<div class="result-a">${answers[i] || '—'}</div>`)}
-          </div>
-        `;
-      });
-      document.getElementById('results-content').innerHTML = html;
-    }
+function handleText() {
+  const ta = document.getElementById("ta");
+  answers[current] = ta ? ta.value.trim() || null : null;
+  updateNext();
+}
 
-    // Copy answers to clipboard
-    function copyAnswers() {
-      const answersText = JSON.stringify(answers, null, 2);
-      navigator.clipboard.writeText(answersText)
-        .then(() => alert("Copied answers to clipboard!"))
-        .catch(err => console.error('Failed to copy: ', err));
-    }
+function updateNext() {
+  const q = questions[current];
+  let ready = q.type === "rank" ? true
+    : q.type === "text" ? (answers[current] && answers[current].length > 0)
+    : answers[current] !== null;
+  const nb = document.getElementById("next-btn");
+  nb.disabled = !ready;
+  nb.textContent = current === questions.length - 1 ? "See results" : "Next";
+}
 
-    // Initialize
+function goNext() {
+  if (questions[current].type === "text") {
+    const ta = document.getElementById("ta");
+    if (ta) answers[current] = ta.value.trim() || null;
+  }
+  if (current < questions.length - 1) {
+    current++;
     render();
-  </script>
+  } else {
+    showResults();
+  }
+}
+
+function goBack() {
+  if (current > 0) { current--; render(); }
+}
+
+function showResults() {
+  document.getElementById("survey").style.display = "none";
+  document.getElementById("results").style.display = "block";
+
+  // hide submit btn if no endpoint configured
+  if (!FORM_ENDPOINT) {
+    document.getElementById("submit-btn").style.display = "none";
+  }
+
+  let html = "";
+  questions.forEach((q, i) => {
+    html += '<div class="res-block">';
+    html += '<div class="res-q">' + q.block + ' — ' + q.q + '</div>';
+    if (q.type === "single") {
+      html += '<div class="res-a">' + (answers[i] !== null ? q.opts[answers[i]] : "—") + '</div>';
+    } else if (q.type === "rank") {
+      html += '<div class="res-rank">';
+      (answers[i] || q.items).forEach((item, j) => {
+        html += '<div class="res-rank-row"><span class="res-rank-n">' + (j + 1) + '</span>' + item + '</div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="res-a">' + (answers[i] || "—") + '</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById("res-content").innerHTML = html;
+}
+
+function formatText() {
+  let out = "Commonplace — Concept Survey\n";
+  out += new Date().toLocaleDateString() + "\n\n";
+  questions.forEach((q, i) => {
+    out += q.block + "\n";
+    out += q.q + "\n";
+    if (q.type === "single") {
+      out += "→ " + (answers[i] !== null ? q.opts[answers[i]] : "—") + "\n\n";
+    } else if (q.type === "rank") {
+      (answers[i] || q.items).forEach((item, j) => {
+        out += (j + 1) + ". " + item + "\n";
+      });
+      out += "\n";
+    } else {
+      out += "→ " + (answers[i] || "—") + "\n\n";
+    }
+  });
+  return out;
+}
+
+function copyResults() {
+  navigator.clipboard.writeText(formatText()).then(() => {
+    showToast("Copied to clipboard");
+  }).catch(() => {
+    showToast("Select all text above and copy manually");
+  });
+}
+
+async function submitResults() {
+  if (!FORM_ENDPOINT) return;
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+
+  const payload = {};
+  questions.forEach((q, i) => {
+    const key = "Q" + (i + 1) + "_" + q.q.slice(0, 40).replace(/[^a-zA-Z0-9]/g, "_");
+    if (q.type === "single") {
+      payload[key] = answers[i] !== null ? q.opts[answers[i]] : "";
+    } else if (q.type === "rank") {
+      payload[key] = (answers[i] || q.items).join(" > ");
+    } else {
+      payload[key] = answers[i] || "";
+    }
+  });
+  payload["_formatted"] = formatText();
+
+  try {
+    const res = await fetch(FORM_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      document.getElementById("results").style.display = "none";
+      document.getElementById("submitted").style.display = "block";
+    } else {
+      showToast("Submission failed — please copy and send manually");
+      btn.disabled = false;
+      btn.textContent = "Submit";
+    }
+  } catch {
+    showToast("Network error — please copy and send manually");
+    btn.disabled = false;
+    btn.textContent = "Submit";
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+</script>
 </body>
 </html>
