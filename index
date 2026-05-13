@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Concept Survey</title>
+  <style>
+    :root { --primary: #4a6fa5; --text: #333; --light: #f0f0f0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 2rem; }
+    .survey-container { max-width: 800px; margin: auto; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    #question-area { display: flex; flex-direction: column; gap: 1rem; }
+    .block-header { font-weight: bold; color: var(--primary); margin-bottom: 0.5rem; }
+    .nav-buttons { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1rem; }
+    #next-btn, #copy-btn { padding: 0.6rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .single-choice { display: grid; gap: 0.5rem; }
+    .option-btn { flex: 1; min-width: 120px; padding: 0.6rem; background: var(--light); border: none; border-radius: 4px; transition: all 0.3s; }
+    .rank-container { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.5rem 0; }
+    .rank-item { min-width: 120px; background: var(--light); border-radius: 4px; padding: 0.6rem; text-align: center; }
+    textarea.text-input { width: 100%; min-height: 80px; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
+    .results-screen { display: none; background: white; padding: 2rem; text-align: center; }
+    .result-block { margin-bottom: 1.5rem; padding: 1rem; border-left: 3px solid var(--primary); }
+    .result-q { font-weight: bold; color: var(--text); }
+    .result-a { min-height: 20px; word-break: break-all; }
+    #results-content { display: flex; flex-direction: column; gap: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="survey-container" id="survey-screen">
+    <h1>Concept Survey</h1>
+    <div id="question-area"></div>
+    <div class="nav-buttons">
+      <button id="copy-btn">Copy Answers</button>
+      <button id="next-btn">Next</button>
+    </div>
+  </div>
+
+  <div class="survey-container" id="results-screen">
+    <h2>Survey Results</h2>
+    <div id="results-content"></div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // Survey data structure
+    const questions = [
+      { block: "Concept 1", q: "What is your primary concept?", type: 'text', placeholder: "Enter your answer..." },
+      { block: "Ranking", q: "Rank these items by importance (1=most):", type: 'rank', items: ["A", "B", "C", "D"] },
+      { block: "Options", q: "Select one option:", type: 'single', opts: ["Option 1", "Option 2", "Option 3"] }
+    ];
+
+    let current = 0;
+    const answers = Array(questions.length).fill(null);
+
+    // Render the current question
+    function render() {
+      const q = questions[current];
+      let html = `<div class="block-header">${q.block}</div>`;
+
+      if (q.type === 'text') {
+        const val = answers[current] || '';
+        html += `
+          <textarea class="text-input" id="text-input-${current}" placeholder="${q.placeholder}"
+                    oninput="handleText(${current})">${val}</textarea>
+        `;
+      } else if (q.type === 'rank') {
+        const rankItems = (answers[current] || q.items).map(item => `<div class="rank-item">${item}</div>`);
+        html += `
+          <div class="rank-container">
+            ${rankItems.join('')}
+          </div>
+        `;
+      } else if (q.type === 'single') {
+        const options = q.opts.map((opt, i) =>
+          `<button class="option-btn" onclick="selectOpt(${i})">${opt}</button>`
+        );
+        html += `
+          <div class="single-choice">
+            ${options.join('')}
+          </div>
+        `;
+      }
+
+      document.getElementById('question-area').innerHTML = html;
+      updateNext();
+    }
+
+    // Handle text input
+    function handleText(index) {
+      const val = document.getElementById(`text-input-${index}`).value.trim();
+      answers[index] = val || null;
+      updateNext();
+    }
+
+    // Select single option
+    function selectOpt(i) {
+      answers[current] = i;
+      render();
+    }
+
+    // Move items in rank question
+    function moveRank(index, direction) {
+      const arr = [...answers[current]];
+      const newIndex = index + direction;
+
+      if (newIndex >= 0 && newIndex < arr.length) {
+        [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+        answers[current] = arr;
+        render();
+      }
+    }
+
+    // Update Next button state
+    function updateNext() {
+      const q = questions[current];
+      let ready = false;
+
+      if (q.type === 'rank') ready = true;
+      else if (q.type === 'text') ready = answers[current]?.length > 0;
+      else ready = answers[current] !== null;
+
+      document.getElementById('next-btn').disabled = !ready;
+      document.getElementById('next-btn').textContent =
+        current === questions.length - 1 ? 'See Results' : 'Next';
+    }
+
+    // Navigation functions
+    function goNext() {
+      if (questions[current].type === 'text') {
+        const val = document.querySelector(`#text-input-${current}`)?.value.trim();
+        answers[current] = val || null;
+      }
+      current++;
+      render();
+
+      if (current >= questions.length) showResults();
+    }
+
+    function goBack() {
+      if (current > 0) { current--; render(); }
+    }
+
+    // Show results
+    function showResults() {
+      document.getElementById('survey-screen').style.display = 'none';
+      document.getElementById('results-screen').style.display = 'block';
+
+      let html = '';
+      questions.forEach((q, i) => {
+        html += `
+          <div class="result-block">
+            <div class="result-q">${q.block} — ${q.q}</div>
+            ${q.type === 'single' ?
+              `<div class="result-a">${answers[i] !== null ? q.opts[answers[i]] : '—'}</div>` :
+              (q.type === 'rank' ?
+                `<div class="result-rank">
+                  ${(answers[i] || q.items).map((item, j) =>
+                    `<div class="result-rank-item"><span>${j+1}.</span> ${item}</div>`
+                  ).join('')}
+                </div>` :
+                `<div class="result-a">${answers[i] || '—'}</div>`)}
+          </div>
+        `;
+      });
+      document.getElementById('results-content').innerHTML = html;
+    }
+
+    // Copy answers to clipboard
+    function copyAnswers() {
+      const answersText = JSON.stringify(answers, null, 2);
+      navigator.clipboard.writeText(answersText)
+        .then(() => alert("Copied answers to clipboard!"))
+        .catch(err => console.error('Failed to copy: ', err));
+    }
+
+    // Initialize
+    render();
+  </script>
+</body>
+</html>
